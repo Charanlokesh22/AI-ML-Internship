@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DB Chat Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .chat-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        #queryInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #response {
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        .example {
+            color: #666;
+            font-size: 0.9em;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Database Chat Assistant</h1>
+    
+    <div class="chat-container">
+        <div class="input-container">
+            <input type="text" id="queryInput" placeholder="Enter your query...">
+            <button onclick="sendQuery()">Send</button>
+        </div>
+        <div id="response"></div>
+    </div>
+
+    <div>
+        <h3>Example queries:</h3>
+        <p class="example">• Show me all employees in the Sales department.</p>
+        <p class="example">• Who is the manager of the Engineering department?</p>
+        <p class="example">• List all employees hired after 2021-01-01.</p>
+        <p class="example">• What is the total salary expense for the Marketing department?</p>
+    </div>
+
+    <script>
+        async function sendQuery() {
+            const queryInput = document.getElementById('queryInput');
+            const responseDiv = document.getElementById('response');
+            const query = queryInput.value;
+
+            if (!query) return;
+
+            try {
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: query }),
+                });
+
+                const data = await response.json();
+                
+                if (data.data) {
+                    responseDiv.innerHTML = `<p>${data.message}</p>` + 
+                        JSON.stringify(data.data, null, 2);
+                } else {
+                    responseDiv.textContent = data.message;
+                }
+            } catch (error) {
+                responseDiv.textContent = 'Error processing query. Please try again.';
+            }
+        }
+
+        document.getElementById('queryInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendQuery();
+            }
+        });
+    </script>
+</body>
+</html>

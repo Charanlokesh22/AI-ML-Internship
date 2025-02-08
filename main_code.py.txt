@@ -1,0 +1,165 @@
+# app.py
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import sqlite3
+import datetime
+from typing import Optional, List, Dict
+import re
+
+app = FastAPI()
+
+class Query(BaseModel):
+    text: str
+
+def init_db():
+    conn = sqlite3.connect('company.db')
+    c = conn.cursor()
+    
+    # Create tables
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS employees (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            department TEXT NOT NULL,
+            salary INTEGER NOT NULL,
+            hire_date DATE NOT NULL
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS departments (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            manager TEXT NOT NULL
+        )
+    ''')
+    
+    # Insert sample data
+    employees = [
+        (1, 'Alice', 'Sales', 50000, '2021-01-15'),
+        (2, 'Bob', 'Engineering', 70000, '2020-06-10'),
+        (3, 'Charlie', 'Marketing', 60000, '2022-03-20')
+    ]
+    
+    departments = [
+        (1, 'Sales', 'Alice'),
+        (2, 'Engineering', 'Bob'),
+        (3, 'Marketing', 'Charlie')
+    ]
+    
+    c.executemany('INSERT OR REPLACE INTO employees VALUES (?,?,?,?,?)', employees)
+    c.executemany('INSERT OR REPLACE INTO departments VALUES (?,?,?)', departments)
+    
+    conn.commit()
+    conn.close()
+
+def extract_department(query: str) -> Optional[str]:
+    pattern = r"(?:in|for) the (\w+) department"
+    match = re.search(pattern, query, re.IGNORECASE)
+    return match.group(1) if match else None
+
+def extract_date(query: str) -> Optional[str]:
+    pattern = r"after (\d{4}-\d{2}-\d{2})"
+    match = re.search(pattern, query)
+    return match.group(1) if match else None
+
+def query_handler(query: str) -> Dict:
+    conn = sqlite3.connect('company.db')
+    c = conn.cursor()
+    
+    try:
+        # Pattern matching for different query types
+        if "all employees in" in query.lower():
+            dept = extract_department(query)
+            if not dept:
+                raise ValueError("Department not specified")
+            
+            c.execute('''
+                SELECT name, salary, hire_date 
+                FROM employees 
+                WHERE department = ? 
+                ORDER BY name
+            ''', (dept,))
+            
+            results = c.fetchall()
+            if not results:
+                return {"message": f"No employees found in {dept} department"}
+            
+            return {
+                "message": f"Employees in {dept} department:",
+                "data": [{"name": r[0], "salary": r[1], "hire_date": r[2]} for r in results]
+            }
+            
+        elif "manager of" in query.lower():
+            dept = extract_department(query)
+            if not dept:
+                raise ValueError("Department not specified")
+            
+            c.execute('SELECT manager FROM departments WHERE name = ?', (dept,))
+            result = c.fetchone()
+            
+            if not result:
+                return {"message": f"Department {dept} not found"}
+            
+            return {"message": f"The manager of {dept} is {result[0]}"}
+            
+        elif "hired after" in query.lower():
+            date = extract_date(query)
+            if not date:
+                raise ValueError("Invalid date format. Please use YYYY-MM-DD")
+            
+            c.execute('''
+                SELECT name, department, hire_date 
+                FROM employees 
+                WHERE hire_date > ? 
+                ORDER BY hire_date
+            ''', (date,))
+            
+            results = c.fetchall()
+            if not results:
+                return {"message": f"No employees hired after {date}"}
+            
+            return {
+                "message": f"Employees hired after {date}:",
+                "data": [{"name": r[0], "department": r[1], "hire_date": r[2]} for r in results]
+            }
+            
+        elif "total salary expense" in query.lower():
+            dept = extract_department(query)
+            if not dept:
+                raise ValueError("Department not specified")
+            
+            c.execute('''
+                SELECT SUM(salary) 
+                FROM employees 
+                WHERE department = ?
+            ''', (dept,))
+            
+            result = c.fetchone()
+            if not result[0]:
+                return {"message": f"No salary data found for {dept} department"}
+            
+            return {"message": f"Total salary expense for {dept}: ${result[0]:,}"}
+            
+        else:
+            return {"message": "I don't understand that query. Please try a supported query type."}
+            
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="An error occurred while processing your query")
+    finally:
+        conn.close()
+
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+
+@app.post("/query")
+async def process_query(query: Query):
+    return query_handler(query.text)
+
+# For local testing
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
