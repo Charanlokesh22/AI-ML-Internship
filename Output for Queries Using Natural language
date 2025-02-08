@@ -1,0 +1,60 @@
+ 1) Query: "Show me all employees in the Sales department."
+
+output:-
+{
+    "message": "Employees in Sales department:",
+    "data": [
+        {"name": "Alice", "salary": 50000, "hire_date": "2021-01-15"}
+    ]
+}
+
+
+2) "Who is the manager of the Engineering department?"
+ Output:-
+{
+    "message": "The manager of Engineering is Bob."
+}
+
+3)"List all employees hired after 2021-01-01."
+output:-
+{
+    "message": "Employees hired after 2021-01-01:",
+    "data": [
+        {"name": "Alice", "department": "Sales", "hire_date": "2021-01-15"},
+        {"name": "Charlie", "department": "Marketing", "hire_date": "2022-03-20"}
+    ]
+}
+
+4) "Find employees hired between 2020-01-01 and 2022-12-31."
+ Output:-
+{
+    "message": "Employees hired between 2020-01-01 and 2022-12-31:",
+    "data": [
+        {"name": "Alice", "department": "Sales", "hire_date": "2021-01-15"},
+        {"name": "Bob", "department": "Engineering", "hire_date": "2020-06-10"},
+        {"name": "Charlie", "department": "Marketing", "hire_date": "2022-03-20"}
+    ]
+}
+
+5)How many employees work in the Marketing department?"
+ Handling Invalid Input:
+If Marketing department exists, return the count.
+If department doesn't exist, return an error message.
+output:-
+valid input:-
+{
+    "message": "Total employees in Marketing department: 1"
+}
+
+invalid input :-
+{
+    "message": "Department HR not found."
+}
+
+
+
+
+
+
+
+
